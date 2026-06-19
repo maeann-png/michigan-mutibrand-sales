@@ -593,6 +593,13 @@ const AGING = [{
   color: '#d6433f'
 }];
 const agingBucket = days => days <= 30 ? AGING[0] : days <= 60 ? AGING[1] : days <= 90 ? AGING[2] : AGING[3];
+// "Last Order Date" segment labels (same buckets/colors as AGING)
+const RECENCY_LABEL = {
+  current: '30 days',
+  b31: '60 days',
+  b61: '90 days',
+  b91: '90+ days'
+};
 const SERIES_COLORS = ["#4b2e83", "#6a2f9e", "#8e2f9e", "#a82d8a", "#c23a5e", "#7c3aed", "#b0317a", "#c084fc"];
 const isPrimaryName = b => PRIMARY_BRANDS.includes((b || "").trim());
 const otherName = raw => {
@@ -1436,7 +1443,7 @@ function SalesDashboard({
     return Object.entries(m).map(([name, value]) => ({
       name,
       value
-    })).sort((a, b) => b.value - a.value).slice(0, 12);
+    })).sort((a, b) => b.value - a.value);
   }, [focusRows]);
   const byRep = useMemo(() => {
     const m = {};
@@ -1555,6 +1562,7 @@ function SalesDashboard({
       })).sort((a, b) => b.value - a.value)
     };
   }, [data, filters.brand]);
+  const buyerPager = usePager(topBuyers, 15);
   const reset = () => setFilters({
     from: '',
     to: '',
@@ -1647,7 +1655,7 @@ function SalesDashboard({
       color: a.color
     },
     onClick: () => upd('lastOrder', filters.lastOrder === a.key ? '' : a.key)
-  }, a.label.replace(' days', ''))))), /*#__PURE__*/React.createElement("div", {
+  }, RECENCY_LABEL[a.key])))), /*#__PURE__*/React.createElement("div", {
     className: "filter-group",
     style: {
       minWidth: 170
@@ -1744,14 +1752,77 @@ function SalesDashboard({
     style: {
       color: a.color
     }
-  }, a.label), /*#__PURE__*/React.createElement("div", {
+  }, RECENCY_LABEL[a.key]), /*#__PURE__*/React.createElement("div", {
     className: "kpi-value tabular",
     style: {
       fontSize: 26
     }
   }, fmtNum(a.buyers)), /*#__PURE__*/React.createElement("div", {
     className: "kpi-sub"
-  }, "buyers \xB7 ", fmtMoney(a.revenue))))), selectedOrder && /*#__PURE__*/React.createElement("div", {
+  }, "buyers \xB7 ", fmtMoney(a.revenue))))), filters.brand === '' && /*#__PURE__*/React.createElement("section", {
+    className: "section"
+  }, /*#__PURE__*/React.createElement(SectionHeader, {
+    title: "Brand",
+    em: "comparison",
+    meta: brandComparison.length + ' brands'
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      height: 340
+    }
+  }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+    width: "100%",
+    height: "100%"
+  }, /*#__PURE__*/React.createElement(BarChart, {
+    data: brandComparison,
+    layout: "vertical",
+    margin: {
+      top: 8,
+      right: 16,
+      left: 8,
+      bottom: 8
+    }
+  }, /*#__PURE__*/React.createElement(CartesianGrid, {
+    stroke: "var(--border-soft)",
+    strokeDasharray: "2 2",
+    horizontal: false
+  }), /*#__PURE__*/React.createElement(XAxis, {
+    type: "number",
+    stroke: "var(--text-faint)",
+    tick: {
+      fontSize: 11,
+      fontFamily: 'JetBrains Mono'
+    },
+    tickFormatter: fmtMoney,
+    axisLine: false,
+    tickLine: false
+  }), /*#__PURE__*/React.createElement(YAxis, {
+    type: "category",
+    dataKey: "name",
+    stroke: "var(--text-faint)",
+    tick: {
+      fontSize: 11
+    },
+    width: 120,
+    axisLine: false,
+    tickLine: false,
+    tickFormatter: brandLabel
+  }), /*#__PURE__*/React.createElement(Tooltip, {
+    contentStyle: {
+      background: 'var(--bg-elev)',
+      border: '1px solid var(--border)',
+      borderRadius: 8,
+      fontSize: 12
+    },
+    formatter: v => [fmtMoneyFull(v), 'Net revenue']
+  }), /*#__PURE__*/React.createElement(Bar, {
+    dataKey: "value",
+    name: "Net revenue",
+    radius: [0, 3, 3, 0]
+  }, brandComparison.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
+    key: i,
+    fill: brandColor(d.name)
+  }))))))), selectedOrder && /*#__PURE__*/React.createElement("div", {
     className: "focus-banner"
   }, /*#__PURE__*/React.createElement("span", null, "Focused on invoice ", /*#__PURE__*/React.createElement("strong", {
     style: {
@@ -1812,116 +1883,6 @@ function SalesDashboard({
     }
   }, m.mom == null ? '—' : (m.mom >= 0 ? '+' : '') + m.mom.toFixed(1) + '%')))))))), /*#__PURE__*/React.createElement("section", {
     className: "section"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "grid-2"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionHeader, {
-    title: "Brand",
-    em: "comparison",
-    meta: brandComparison.length + ' brands'
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "card",
-    style: {
-      height: 320
-    }
-  }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
-    width: "100%",
-    height: "100%"
-  }, /*#__PURE__*/React.createElement(BarChart, {
-    data: brandComparison,
-    layout: "vertical",
-    margin: {
-      top: 8,
-      right: 16,
-      left: 8,
-      bottom: 8
-    }
-  }, /*#__PURE__*/React.createElement(CartesianGrid, {
-    stroke: "var(--border-soft)",
-    strokeDasharray: "2 2",
-    horizontal: false
-  }), /*#__PURE__*/React.createElement(XAxis, {
-    type: "number",
-    stroke: "var(--text-faint)",
-    tick: {
-      fontSize: 11,
-      fontFamily: 'JetBrains Mono'
-    },
-    tickFormatter: fmtMoney,
-    axisLine: false,
-    tickLine: false
-  }), /*#__PURE__*/React.createElement(YAxis, {
-    type: "category",
-    dataKey: "name",
-    stroke: "var(--text-faint)",
-    tick: {
-      fontSize: 11
-    },
-    width: 120,
-    axisLine: false,
-    tickLine: false,
-    tickFormatter: brandLabel
-  }), /*#__PURE__*/React.createElement(Tooltip, {
-    contentStyle: {
-      background: 'var(--bg-elev)',
-      border: '1px solid var(--border)',
-      borderRadius: 8,
-      fontSize: 12
-    },
-    formatter: v => [fmtMoneyFull(v), 'Net revenue']
-  }), /*#__PURE__*/React.createElement(Bar, {
-    dataKey: "value",
-    name: "Net revenue",
-    radius: [0, 3, 3, 0]
-  }, brandComparison.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
-    key: i,
-    fill: brandColor(d.name)
-  }))))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionHeader, {
-    title: "By",
-    em: "category",
-    meta: "mix"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "card",
-    style: {
-      height: 320,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }
-  }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
-    width: "100%",
-    height: "100%"
-  }, /*#__PURE__*/React.createElement(PieChart, null, /*#__PURE__*/React.createElement(Pie, {
-    data: byCategory,
-    dataKey: "value",
-    nameKey: "name",
-    cx: "50%",
-    cy: "50%",
-    innerRadius: 58,
-    outerRadius: 108,
-    paddingAngle: 2,
-    stroke: "var(--bg-elev)",
-    strokeWidth: 2
-  }, byCategory.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
-    key: i,
-    fill: SERIES_COLORS[i % SERIES_COLORS.length]
-  }))), /*#__PURE__*/React.createElement(Tooltip, {
-    contentStyle: {
-      background: 'var(--bg-elev)',
-      border: '1px solid var(--border)',
-      borderRadius: 8,
-      fontSize: 12
-    },
-    formatter: v => fmtMoneyFull(v)
-  }), /*#__PURE__*/React.createElement(Legend, {
-    verticalAlign: "bottom",
-    iconType: "square",
-    wrapperStyle: {
-      fontSize: 11,
-      fontFamily: 'JetBrains Mono',
-      color: 'var(--text-dim)'
-    }
-  }))))))), /*#__PURE__*/React.createElement("section", {
-    className: "section"
   }, /*#__PURE__*/React.createElement(SectionHeader, {
     title: "Top product",
     em: "breakdown",
@@ -1969,25 +1930,77 @@ function SalesDashboard({
     className: "table-foot"
   }, "Showing top 150 of ", fmtNum(productBreakdown.length)))), /*#__PURE__*/React.createElement("section", {
     className: "section"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "grid-half"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionHeader, {
-    title: "Top",
-    em: "buyers",
-    meta: 'top ' + topBuyers.length
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "card"
-  }, /*#__PURE__*/React.createElement(RankList, {
-    data: topBuyers
-  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionHeader, {
+  }, /*#__PURE__*/React.createElement(SectionHeader, {
     title: "By",
-    em: "rep",
-    meta: byRep.length + ' reps'
+    em: "category",
+    meta: "product mix"
   }), /*#__PURE__*/React.createElement("div", {
+    className: "grid-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      height: 320,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+    width: "100%",
+    height: "100%"
+  }, /*#__PURE__*/React.createElement(PieChart, null, /*#__PURE__*/React.createElement(Pie, {
+    data: byCategory,
+    dataKey: "value",
+    nameKey: "name",
+    cx: "50%",
+    cy: "50%",
+    innerRadius: 58,
+    outerRadius: 108,
+    paddingAngle: 2,
+    stroke: "var(--bg-elev)",
+    strokeWidth: 2
+  }, byCategory.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
+    key: i,
+    fill: SERIES_COLORS[i % SERIES_COLORS.length]
+  }))), /*#__PURE__*/React.createElement(Tooltip, {
+    contentStyle: {
+      background: 'var(--bg-elev)',
+      border: '1px solid var(--border)',
+      borderRadius: 8,
+      fontSize: 12
+    },
+    formatter: v => fmtMoneyFull(v)
+  }), /*#__PURE__*/React.createElement(Legend, {
+    verticalAlign: "bottom",
+    iconType: "square",
+    wrapperStyle: {
+      fontSize: 11,
+      fontFamily: 'JetBrains Mono',
+      color: 'var(--text-dim)'
+    }
+  })))), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement(RankList, {
-    data: byRep
-  }))))), /*#__PURE__*/React.createElement("section", {
+    data: byCategory
+  })))), /*#__PURE__*/React.createElement("section", {
+    className: "section"
+  }, /*#__PURE__*/React.createElement(SectionHeader, {
+    title: "Top buyers",
+    em: "breakdown",
+    meta: fmtNum(topBuyers.length) + ' buyers'
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 24
+    }
+  }, /*#__PURE__*/React.createElement(RankList, {
+    data: buyerPager.slice
+  })), /*#__PURE__*/React.createElement(Pager, {
+    pager: buyerPager
+  }))), /*#__PURE__*/React.createElement("section", {
     className: "section"
   }, /*#__PURE__*/React.createElement("div", {
     className: "section-header",
