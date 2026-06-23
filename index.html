@@ -608,6 +608,59 @@ const RECENCY_LABEL = {
   b91: '90+ days'
 };
 const SERIES_COLORS = ["#4b2e83", "#6a2f9e", "#8e2f9e", "#a82d8a", "#c23a5e", "#7c3aed", "#b0317a", "#c084fc"];
+// High-contrast palette (distinct hues) for category mixes and multi-year lines
+const CONTRAST = ["#2563eb", "#e0792a", "#16a34a", "#dc2626", "#7c3aed", "#0891b2", "#ca8a04", "#db2777", "#0d9488", "#9333ea", "#65a30d", "#be123c"];
+// Quick date ranges (anchored to today)
+const QUICK_RANGES = [{
+  key: 'today',
+  label: 'Today'
+}, {
+  key: 'week',
+  label: 'Last week'
+}, {
+  key: '30',
+  label: '30 days'
+}, {
+  key: '90',
+  label: '90 days'
+}, {
+  key: 'ytd',
+  label: 'YTD'
+}];
+const quickRangeDates = key => {
+  const t = new Date();
+  const to = ymd(t);
+  const back = n => {
+    const x = new Date(t);
+    x.setDate(x.getDate() - n);
+    return ymd(x);
+  };
+  if (key === 'today') return {
+    from: to,
+    to
+  };
+  if (key === 'week') return {
+    from: back(7),
+    to
+  };
+  if (key === '30') return {
+    from: back(30),
+    to
+  };
+  if (key === '90') return {
+    from: back(90),
+    to
+  };
+  if (key === 'ytd') return {
+    from: ymd(new Date(t.getFullYear(), 0, 1)),
+    to
+  };
+  return {
+    from: '',
+    to: ''
+  };
+};
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const isPrimaryName = b => PRIMARY_BRANDS.includes((b || "").trim());
 const otherName = raw => {
   const b = (raw || "").trim();
@@ -1219,6 +1272,187 @@ const PAY_COLORS = {
   Unpaid: '#caa11e',
   Unknown: '#9b87ad'
 };
+
+// Revenue-over-time: Day=area, Year=bars, Month=one line per year (calendar months on X)
+function RevenueChart({
+  series,
+  monthYear,
+  grouping,
+  setGrouping
+}) {
+  const single = linregTrend(series);
+  const first = series.length ? series[0].value : 0,
+    last = series.length ? series[series.length - 1].value : 0;
+  const growth = grouping !== 'month' && first ? (last - first) / first * 100 : null;
+  return /*#__PURE__*/React.createElement("section", {
+    className: "section"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-header"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "section-title"
+  }, "Revenue ", /*#__PURE__*/React.createElement("em", null, "over time")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14
+    }
+  }, growth != null && /*#__PURE__*/React.createElement("span", {
+    className: "growth-badge",
+    style: {
+      color: growth >= 0 ? 'var(--accent)' : '#e2554f'
+    }
+  }, growth >= 0 ? '▲' : '▼', " ", Math.abs(growth).toFixed(1), "% ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--text-faint)'
+    }
+  }, "trend")), /*#__PURE__*/React.createElement("div", {
+    className: "seg"
+  }, [['day', 'Day'], ['month', 'Month'], ['year', 'Year']].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    className: 'seg-btn' + (grouping === k ? ' seg-active' : ''),
+    onClick: () => setGrouping(k)
+  }, l))))), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      height: 340
+    }
+  }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+    width: "100%",
+    height: "100%"
+  }, grouping === 'month' ? /*#__PURE__*/React.createElement(LineChart, {
+    data: monthYear.data,
+    margin: {
+      top: 12,
+      right: 16,
+      left: 4,
+      bottom: 0
+    }
+  }, /*#__PURE__*/React.createElement(CartesianGrid, {
+    stroke: "var(--border-soft)",
+    strokeDasharray: "2 2",
+    vertical: false
+  }), /*#__PURE__*/React.createElement(XAxis, {
+    dataKey: "month",
+    stroke: "var(--text-faint)",
+    tick: {
+      fontSize: 11,
+      fontFamily: 'JetBrains Mono'
+    },
+    tickLine: false,
+    axisLine: {
+      stroke: 'var(--border)'
+    }
+  }), /*#__PURE__*/React.createElement(YAxis, {
+    stroke: "var(--text-faint)",
+    tick: {
+      fontSize: 11,
+      fontFamily: 'JetBrains Mono'
+    },
+    tickFormatter: fmtMoney,
+    tickLine: false,
+    axisLine: false
+  }), /*#__PURE__*/React.createElement(Tooltip, {
+    contentStyle: {
+      background: 'var(--bg-elev)',
+      border: '1px solid var(--border)',
+      borderRadius: 8,
+      fontSize: 12
+    },
+    formatter: (v, n) => [fmtMoneyFull(v), n]
+  }), /*#__PURE__*/React.createElement(Legend, {
+    wrapperStyle: {
+      fontSize: 11,
+      fontFamily: 'JetBrains Mono'
+    }
+  }), monthYear.years.map((y, i) => /*#__PURE__*/React.createElement(Line, {
+    key: y,
+    type: "monotone",
+    dataKey: String(y),
+    name: String(y),
+    stroke: CONTRAST[i % CONTRAST.length],
+    strokeWidth: 2.5,
+    dot: {
+      r: 2
+    },
+    connectNulls: true
+  }))) : /*#__PURE__*/React.createElement(ComposedChart, {
+    data: single,
+    margin: {
+      top: 12,
+      right: 12,
+      left: 4,
+      bottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("linearGradient", {
+    id: "salesrev",
+    x1: "0",
+    y1: "0",
+    x2: "0",
+    y2: "1"
+  }, /*#__PURE__*/React.createElement("stop", {
+    offset: "0%",
+    stopColor: "var(--accent)",
+    stopOpacity: 0.32
+  }), /*#__PURE__*/React.createElement("stop", {
+    offset: "100%",
+    stopColor: "var(--accent)",
+    stopOpacity: 0
+  }))), /*#__PURE__*/React.createElement(CartesianGrid, {
+    stroke: "var(--border-soft)",
+    strokeDasharray: "2 2",
+    vertical: false
+  }), /*#__PURE__*/React.createElement(XAxis, {
+    dataKey: "period",
+    stroke: "var(--text-faint)",
+    tick: {
+      fontSize: 11,
+      fontFamily: 'JetBrains Mono'
+    },
+    tickLine: false,
+    axisLine: {
+      stroke: 'var(--border)'
+    }
+  }), /*#__PURE__*/React.createElement(YAxis, {
+    stroke: "var(--text-faint)",
+    tick: {
+      fontSize: 11,
+      fontFamily: 'JetBrains Mono'
+    },
+    tickFormatter: fmtMoney,
+    tickLine: false,
+    axisLine: false
+  }), /*#__PURE__*/React.createElement(Tooltip, {
+    contentStyle: {
+      background: 'var(--bg-elev)',
+      border: '1px solid var(--border)',
+      borderRadius: 8,
+      fontSize: 12
+    },
+    formatter: (v, n) => [fmtMoneyFull(v), n === 'trend' ? 'Trend' : 'Revenue']
+  }), grouping === 'year' ? /*#__PURE__*/React.createElement(Bar, {
+    dataKey: "value",
+    name: "Revenue",
+    radius: [3, 3, 0, 0]
+  }, single.map((_, i) => /*#__PURE__*/React.createElement(Cell, {
+    key: i,
+    fill: SERIES_COLORS[i % SERIES_COLORS.length]
+  }))) : /*#__PURE__*/React.createElement(Area, {
+    type: "monotone",
+    dataKey: "value",
+    name: "Revenue",
+    stroke: "var(--accent)",
+    strokeWidth: 2,
+    fill: "url(#salesrev)"
+  }), /*#__PURE__*/React.createElement(Line, {
+    type: "monotone",
+    dataKey: "trend",
+    name: "trend",
+    stroke: "var(--warm)",
+    strokeWidth: 1.5,
+    strokeDasharray: "5 4",
+    dot: false
+  })))));
+}
 function App() {
   const {
     data,
@@ -1386,6 +1620,28 @@ function SalesDashboard({
     };
   }, [filtered]);
   const series = useMemo(() => groupByPeriod(filtered, grouping, r => r._revenue), [filtered, grouping]);
+
+  // Month view pivoted by calendar month with one series per year
+  const monthYear = useMemo(() => {
+    const m = {};
+    const years = new Set();
+    filtered.forEach(r => {
+      if (!r._date) return;
+      const y = r._date.getFullYear();
+      years.add(y);
+      const mi = r._date.getMonth();
+      if (!m[mi]) m[mi] = {};
+      m[mi][y] = (m[mi][y] || 0) + r._revenue;
+    });
+    const data = MONTH_ABBR.map((name, i) => ({
+      month: name,
+      ...(m[i] || {})
+    }));
+    return {
+      data,
+      years: [...years].sort()
+    };
+  }, [filtered]);
   const monthly = useMemo(() => {
     const m = {};
     filtered.forEach(r => {
@@ -1480,15 +1736,30 @@ function SalesDashboard({
     })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [filtered]);
   const byCategory = useMemo(() => {
+    const sub = r => {
+      const base = categorize(r);
+      if (base !== 'Other') return base;
+      const n = String(r.product_name || '').toLowerCase();
+      if (/capsule|softgel|tablet|\bpill|caps\b/.test(n)) return 'Capsule';
+      if (/\brso\b|applicator|syringe|distillate dart|\bdart\b/.test(n)) return 'RSO / Applicator';
+      if (/tincture|sublingual|\bdrops?\b/.test(n)) return 'Tincture';
+      if (/syrup/.test(n)) return 'Syrup';
+      if (/gummy|gummies|\bchew/.test(n)) return 'Gummies';
+      if (/chocolate|brownie|cookie|candy|caramel|lozenge|\bmint|bar\b/.test(n)) return 'Edible';
+      if (/beverage|drink|seltzer|soda|\bshot\b|lemonade/.test(n)) return 'Beverage';
+      if (/kief|moon ?rock|infused|hash/.test(n)) return 'Infused';
+      if (/roll-?on|lotion|balm|salve|cream|rub|topical/.test(n)) return 'Topical';
+      return 'Uncategorized';
+    };
     const m = {};
     filtered.forEach(r => {
-      const k = categorize(r);
+      const k = sub(r);
       m[k] = (m[k] || 0) + r._revenue;
     });
     return Object.entries(m).map(([name, value]) => ({
       name,
       value
-    })).sort((a, b) => b.value - a.value);
+    })).filter(d => d.name !== 'Flower' && d.value > 0).sort((a, b) => b.value - a.value);
   }, [filtered]);
   const invoices = useMemo(() => {
     const m = {};
@@ -1588,6 +1859,14 @@ function SalesDashboard({
     ...f,
     [k]: v
   }));
+  const setQuickRange = k => {
+    const r = quickRangeDates(k);
+    setFilters(f => ({
+      ...f,
+      from: r.from,
+      to: r.to
+    }));
+  };
   return /*#__PURE__*/React.createElement("div", {
     className: "app",
     style: {
@@ -1622,18 +1901,24 @@ function SalesDashboard({
     value: filters.to,
     onChange: e => upd('to', e.target.value)
   })), /*#__PURE__*/React.createElement("div", {
-    className: "filter-group"
+    className: "filter-group",
+    style: {
+      minWidth: 250
+    }
   }, /*#__PURE__*/React.createElement("label", {
     className: "filter-label"
-  }, "Sales Rep"), /*#__PURE__*/React.createElement("select", {
-    className: "filter-select",
-    value: filters.rep,
-    onChange: e => upd('rep', e.target.value)
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "All"), distinct.reps.map(b => /*#__PURE__*/React.createElement("option", {
-    key: b
-  }, b)))), /*#__PURE__*/React.createElement("div", {
+  }, "Quick range"), /*#__PURE__*/React.createElement("div", {
+    className: "aging-btns"
+  }, QUICK_RANGES.map(q => /*#__PURE__*/React.createElement("button", {
+    key: q.key,
+    type: "button",
+    className: "aging-btn",
+    style: {
+      borderColor: 'var(--accent-dim)',
+      color: 'var(--accent)'
+    },
+    onClick: () => setQuickRange(q.key)
+  }, q.label)))), /*#__PURE__*/React.createElement("div", {
     className: "filter-group"
   }, /*#__PURE__*/React.createElement("label", {
     className: "filter-label"
@@ -1765,13 +2050,18 @@ function SalesDashboard({
       color: a.color
     }
   }, RECENCY_LABEL[a.key]), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub",
+    style: {
+      marginTop: 1
+    }
+  }, "buyers"), /*#__PURE__*/React.createElement("div", {
     className: "kpi-value tabular",
     style: {
       fontSize: 26
     }
   }, fmtNum(a.buyers)), /*#__PURE__*/React.createElement("div", {
     className: "kpi-sub"
-  }, "buyers \xB7 ", fmtMoney(a.revenue))))), filters.brand === '' && /*#__PURE__*/React.createElement("section", {
+  }, fmtMoney(a.revenue), " revenue")))), filters.brand === '' && /*#__PURE__*/React.createElement("section", {
     className: "section"
   }, /*#__PURE__*/React.createElement(SectionHeader, {
     title: "Brand",
@@ -1843,10 +2133,9 @@ function SalesDashboard({
   }, selInvoice), " \u2014 top buyers, product breakdown & payment status reflect this invoice."), /*#__PURE__*/React.createElement("button", {
     className: "focus-clear",
     onClick: () => setSelectedOrder('')
-  }, "Clear")), /*#__PURE__*/React.createElement(TimeSeriesChart, {
-    title: "Revenue",
-    em: "over time",
-    data: series,
+  }, "Clear")), /*#__PURE__*/React.createElement(RevenueChart, {
+    series: series,
+    monthYear: monthYear,
     grouping: grouping,
     setGrouping: setGrouping
   }), /*#__PURE__*/React.createElement("section", {
@@ -1972,7 +2261,7 @@ function SalesDashboard({
     strokeWidth: 2
   }, byCategory.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
     key: i,
-    fill: SERIES_COLORS[i % SERIES_COLORS.length]
+    fill: CONTRAST[i % CONTRAST.length]
   }))), /*#__PURE__*/React.createElement(Tooltip, {
     contentStyle: {
       background: 'var(--bg-elev)',
@@ -2124,153 +2413,7 @@ function SalesDashboard({
     status: o.status
   }))))))), !invByRep && /*#__PURE__*/React.createElement(Pager, {
     pager: invPager
-  }))), /*#__PURE__*/React.createElement("section", {
-    className: "section"
-  }, /*#__PURE__*/React.createElement(SectionHeader, {
-    title: "Payment",
-    em: "status",
-    meta: "AR mix"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "grid-2"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "card",
-    style: {
-      height: 300,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }
-  }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
-    width: "100%",
-    height: "100%"
-  }, /*#__PURE__*/React.createElement(PieChart, null, /*#__PURE__*/React.createElement(Pie, {
-    data: paymentMix,
-    dataKey: "value",
-    nameKey: "name",
-    cx: "50%",
-    cy: "50%",
-    innerRadius: 60,
-    outerRadius: 108,
-    paddingAngle: 2,
-    stroke: "var(--bg)",
-    strokeWidth: 2
-  }, paymentMix.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
-    key: i,
-    fill: PAY_COLORS[d.name] || '#9dc1a9'
-  }))), /*#__PURE__*/React.createElement(Tooltip, {
-    contentStyle: {
-      background: 'var(--bg-elev)',
-      border: '1px solid var(--border)',
-      borderRadius: 8,
-      fontSize: 12
-    },
-    formatter: v => fmtMoneyFull(v)
-  }), /*#__PURE__*/React.createElement(Legend, {
-    verticalAlign: "bottom",
-    iconType: "square",
-    wrapperStyle: {
-      fontSize: 11,
-      fontFamily: 'JetBrains Mono',
-      color: 'var(--text-dim)'
-    }
-  })))), /*#__PURE__*/React.createElement("div", {
-    className: "card"
-  }, /*#__PURE__*/React.createElement(RankList, {
-    data: paymentMix
-  })))), /*#__PURE__*/React.createElement("section", {
-    className: "section"
-  }, /*#__PURE__*/React.createElement(SectionHeader, {
-    title: "Current",
-    em: "inventory",
-    meta: fmtNum(inv.skus) + ' SKUs'
-  }), inv.skus === 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "card"
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 20,
-      color: 'var(--text-faint)',
-      textAlign: 'center',
-      fontSize: 13
-    }
-  }, "No inventory for this brand selection")) : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "kpi-grid",
-    style: {
-      marginBottom: 24
-    }
-  }, /*#__PURE__*/React.createElement(Kpi, {
-    label: "Units On Hand",
-    value: fmtNum(inv.onHand),
-    accent: true,
-    sub: fmtNum(inv.skus) + ' SKUs'
-  }), /*#__PURE__*/React.createElement(Kpi, {
-    label: "Reserved",
-    value: fmtNum(inv.reserved),
-    sub: "committed"
-  }), /*#__PURE__*/React.createElement(Kpi, {
-    label: "Available",
-    value: fmtNum(inv.available),
-    sub: "on hand \u2212 reserved"
-  }), /*#__PURE__*/React.createElement(Kpi, {
-    label: "Out of Stock",
-    value: fmtNum(inv.oos),
-    color: inv.oos ? '#e2554f' : null,
-    sub: "SKUs at 0"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "card",
-    style: {
-      height: 280
-    }
-  }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
-    width: "100%",
-    height: "100%"
-  }, /*#__PURE__*/React.createElement(BarChart, {
-    data: inv.byBrand,
-    margin: {
-      top: 12,
-      right: 12,
-      left: 4,
-      bottom: 0
-    }
-  }, /*#__PURE__*/React.createElement(CartesianGrid, {
-    stroke: "var(--border-soft)",
-    strokeDasharray: "2 2",
-    vertical: false
-  }), /*#__PURE__*/React.createElement(XAxis, {
-    dataKey: "name",
-    stroke: "var(--text-faint)",
-    tick: {
-      fontSize: 11
-    },
-    axisLine: {
-      stroke: 'var(--border)'
-    },
-    tickLine: false,
-    tickFormatter: brandLabel
-  }), /*#__PURE__*/React.createElement(YAxis, {
-    stroke: "var(--text-faint)",
-    tick: {
-      fontSize: 11,
-      fontFamily: 'JetBrains Mono'
-    },
-    tickFormatter: fmtNum,
-    axisLine: false,
-    tickLine: false
-  }), /*#__PURE__*/React.createElement(Tooltip, {
-    contentStyle: {
-      background: 'var(--bg-elev)',
-      border: '1px solid var(--border)',
-      borderRadius: 8,
-      fontSize: 12
-    },
-    formatter: v => [fmtNum(v), 'On hand']
-  }), /*#__PURE__*/React.createElement(Bar, {
-    dataKey: "value",
-    name: "On hand",
-    radius: [3, 3, 0, 0]
-  }, inv.byBrand.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
-    key: i,
-    fill: brandColor(d.name)
-  })))))))), /*#__PURE__*/React.createElement(StickyFooter, {
+  }))), /*#__PURE__*/React.createElement(StickyFooter, {
     nav: NAV,
     active: ACTIVE,
     brands: distinct.brands,
