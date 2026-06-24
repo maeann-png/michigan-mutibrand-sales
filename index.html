@@ -662,7 +662,7 @@ const quickRangeDates = key => {
 };
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 // Canonical sales-rep roster (always offered in rep filters/tabs even if absent from a given slice)
-const REP_ROSTER = ["Toby Kassa", "Darren Dabish", "Steve Kirma", "Cristina Moceri", "Shawn Dabish"];
+const REP_ROSTER = ["Towbey Kassa", "Darren Dabish", "Steven Kirma", "Cristina Moceri", "Shawn Dabish"];
 const isPrimaryName = b => PRIMARY_BRANDS.includes((b || "").trim());
 const otherName = raw => {
   const b = (raw || "").trim();
@@ -1129,7 +1129,10 @@ function StickyFooter({
   active,
   brands,
   brand,
-  onBrand
+  onBrand,
+  reps,
+  repValue,
+  onRep
 }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
@@ -1143,7 +1146,27 @@ function StickyFooter({
   const list = (brands || []).filter(b => b !== '100 Shafer');
   return /*#__PURE__*/React.createElement("nav", {
     className: 'sticky-foot' + (show ? ' sticky-foot-show' : '')
-  }, onBrand && list.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, onRep ? /*#__PURE__*/React.createElement("div", {
+    className: "sf-brands"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: 'sf-brand sf-brand-all' + (repValue === '' ? ' sf-brand-active' : ''),
+    onClick: () => onRep('')
+  }, "All reps"), (reps || []).map(r => {
+    const on = repValue === r;
+    return /*#__PURE__*/React.createElement("button", {
+      key: r,
+      className: 'sf-brand' + (on ? ' sf-brand-active' : ''),
+      style: on ? {
+        background: 'var(--accent)',
+        borderColor: 'var(--accent)',
+        color: '#fff'
+      } : {
+        borderColor: 'var(--accent-dim)',
+        color: 'var(--text)'
+      },
+      onClick: () => onRep(on ? '' : r)
+    }, r);
+  })) : onBrand && list.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "sf-brands"
   }, /*#__PURE__*/React.createElement("button", {
     className: 'sf-brand sf-brand-all' + (brand === '' ? ' sf-brand-active' : ''),
@@ -1774,19 +1797,18 @@ function SalesDashboard({
   }, [filtered]);
   const byCategory = useMemo(() => {
     const sub = r => {
-      const base = categorize(r);
-      if (base !== 'Other') return base;
       const n = String(r.product_name || '').toLowerCase();
+      if (/gummy|gummies|\bchew/.test(n)) return 'Gummies';
+      if (/syrup/.test(n)) return 'Syrup';
       if (/capsule|softgel|tablet|\bpill|caps\b/.test(n)) return 'Capsule';
       if (/\brso\b|applicator|syringe|distillate dart|\bdart\b/.test(n)) return 'RSO / Applicator';
       if (/tincture|sublingual|\bdrops?\b/.test(n)) return 'Tincture';
-      if (/syrup/.test(n)) return 'Syrup';
-      if (/gummy|gummies|\bchew/.test(n)) return 'Gummies';
-      if (/chocolate|brownie|cookie|candy|caramel|lozenge|\bmint|bar\b/.test(n)) return 'Edible';
       if (/beverage|drink|seltzer|soda|\bshot\b|lemonade/.test(n)) return 'Beverage';
+      if (/chocolate|brownie|cookie|candy|caramel|lozenge|\bmint|bar\b/.test(n)) return 'Edible';
       if (/kief|moon ?rock|infused|hash/.test(n)) return 'Infused';
       if (/roll-?on|lotion|balm|salve|cream|rub|topical/.test(n)) return 'Topical';
-      return 'Uncategorized';
+      const base = categorize(r);
+      return base === 'Other' ? 'Uncategorized' : base;
     };
     const m = {};
     filtered.forEach(r => {
